@@ -1,0 +1,45 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>部室のゆかりさん</title>
+  <link href="style.css" rel="stylesheet" type="text/css" media="all" />
+  <link href="https://fonts.googleapis.com/earlyaccess/roundedmplus1c.css" rel="stylesheet" />
+</head>
+<body>
+  <header> 部室のゆかりさん </header>
+
+  <br/>
+
+  <form action="form" method="POST">
+    <div>
+      message:<input type="text" name="text" value="">
+      <input type="checkbox" name="loli" value="loli">
+      <input type="submit" value="送信">
+    </div>
+  </form>
+  
+  <input type="button" value="お静かに" onClick="location.href='/silent'">
+  <br/><br/>
+
+  <div class="note">
+    --release note--<br/>
+    01/06   Twitter対応 #rccyukari / 幼女先輩ボタン実装<br/>
+    12/26   「お静かに」ボタン / 
+            DOSフィルタを実装<br/>
+    12/25   ログを表示 / 
+            音量を調整<br/>
+    12/23   サービス開始<br/>
+  </div>
+
+  <br/>
+
+  <div class="log-area note">
+    -- log area -- <br/>
+    <% @logs.each do |node| %>
+      <%= node %>
+      <br/>
+    <% end %>
+  </div>
+
+</body>
+</html>

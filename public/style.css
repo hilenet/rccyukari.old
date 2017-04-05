@@ -1,0 +1,22 @@
+body {
+  font-family: "Rounded Mplus 1c";
+}
+
+header {
+  padding: .10em .10em;
+  background: #f7e8f4;
+  font-size: 25px;
+}
+
+.note {
+  padding: .5em .75em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-width: 400px;
+}
+
+div.log-area {
+  background: #eeeeee;
+  max-width: 800px;
+}
+
