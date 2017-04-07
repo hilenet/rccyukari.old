@@ -35,6 +35,8 @@ class Route < Sinatra::Base
     if filter request
       if params[:loli]=="loli"
         routin text, "ai"
+      elsif params[:kansai]=="kansai"
+        routin text, "akn"
       else
         routin text
       end

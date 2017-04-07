@@ -29,7 +29,9 @@ def routin text, char=""
   vol = '2.0'
   unless char.empty?
     char = "-c #{char}"
-    vol = '1.0'
+    if char == 'ai'
+      vol = '1.0'
+    end
   end
 #  text= docomo(text)
   if text.match(/八雲|やくも|yakumo|ヤクモ|ﾔｸﾓ|淫夢|野獣/)
