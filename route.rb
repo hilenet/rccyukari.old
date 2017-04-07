@@ -1,10 +1,23 @@
 require 'sinatra/base'
 require 'sinatra/reloader'
+require 'sqlite3'
+require 'active_record'
+require 'securerandom'
+
+ActiveRecord::Base.establish_connection(
+  adapter: 'sqlite3',
+  database: 'hoge.db'
+)
+
+class Slug < ActiveRecord::Base
+  self.primary_key  = :slug_id
+end
 
 
 class Route < Sinatra::Base
   set :bind, '0.0.0.0'
   set :port, 37564
+  enable :sessions
 
   @@ip = '127.0.0.1'
   @@time = Time.now
@@ -12,11 +25,13 @@ class Route < Sinatra::Base
   post "/" do
     text = JSON.parse(request.body.read)['mes']
 
-    routin text if filter(request)
+    routin text if filter request, session
   end
   
   get "/" do
     @logs = []
+    session[:slug_id] = publish_slug
+
     File.open('log', 'r') do |f|
       f.each_line do |l|
         @logs.unshift l
@@ -30,9 +45,8 @@ class Route < Sinatra::Base
   
   post "/form" do
     text = params[:text]
-    
-    p params[:loli]
-    if filter request
+
+    if filter request, session
       if params[:loli]=="loli"
         routin text, "ai"
       elsif params[:kansai]=="kansai"
@@ -50,21 +64,27 @@ class Route < Sinatra::Base
     redirect to('/')
   end
 
-  def filter request
-    p request.to_s
+  def publish_slug
+    slug_id = SecureRandom.hex(32)
+    Slug.create({"slug_id": slug_id}).slug_id 
 
-    #if request.ip == "192.168.1.3"
-    #  return false
-    if (request.user_agent.include? "curl")
+    return slug_id
+  end
+
+  def destroy_slug slug_id
+    slug = Slug.find_by(slug_id: slug_id)
+
+    return false unless slug
+
+    slug.destroy()
+
+    return slug.slug_id
+  end
+
+  def filter request, session
+    # sessionベースのフィルタリング
+    unless destroy_slug(session[:slug_id])
       return false
-    end
-    if (request.ip == @@ip)
-      if ((Time.now - @@time) < 5)
-        @@time = Time.now
-        return false
-      end
-    else
-      @@ip = request.ip
     end
 
     return true

@@ -24,25 +24,31 @@ def routin text, char=""
   text.gsub!(/　|\ |\n/, '、')
   text.delete!(",\\.\"\'|<>;:/*`()#}{@$-%!\=\+\[\]")
   
-  puts "formated: "#{text}"
+  text = kidding text
 
   vol = '2.0'
   unless char.empty?
-    char = "-c #{char}"
     if char == 'ai'
       vol = '1.0'
     end
-  end
-#  text= docomo(text)
-  if text.match(/八雲|やくも|yakumo|ヤクモ|ﾔｸﾓ|淫夢|野獣/)
-    text = "汚いこと言わせようとしないでください"
-  end
-  if text == "世の中には"
-    text = "世の中には魔女や魔法少女という存在がいる。魔女とは絶望や呪いから生まれた存在であり、人々に災厄をもたらす異形のモノ。その魔女を倒す者達が魔法少女である。本日この見滝原でも4人の魔法少女が魔女と戦っていた。"
+    char = "-c #{char}"
   end
 
   `yukarin -s #{vol} #{char} -q #{text}`
 
+end
+
+def kidding text
+  # result = docomo text
+  result = text
+
+  if text.match(/八雲|やくも|yakumo|ヤクモ|ﾔｸﾓ|淫夢|野獣/)
+    result = "汚いこと言わせようとしないでください"
+  elsif text == "世の中には"
+    result = "世の中には魔女や魔法少女という存在がいる。魔女とは絶望や呪いから生まれた存在であり、人々に災厄をもたらす異形のモノ。その魔女を倒す者達が魔法少女である。本日この見滝原でも4人の魔法少女が魔女と戦っていた。"
+  end
+
+  return result
 end
 
 def docomo(text) 
@@ -64,7 +70,6 @@ end
 
 
 Thread.abort_on_exception = true
-
 tw = Thread.new do 
   auth = YAML.load_file 'auth.yml'  
   cl = Twitter::Streaming::Client.new do |config|

@@ -3,3 +3,4 @@ pid
 *.yml
 log
 deep_log
+*.db
