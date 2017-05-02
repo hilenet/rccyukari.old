@@ -82,6 +82,12 @@ class Route < Sinatra::Base
   end
 
   def filter request, session
+    # DOS対策後で書く
+    if request.ip == "192.168.2.18"
+      puts 'bunned ip: '+"192.168,2,18"
+      #return false
+    end
+
     # sessionベースのフィルタリング
     unless destroy_slug(session[:slug_id])
       return false

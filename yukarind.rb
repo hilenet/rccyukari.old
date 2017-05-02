@@ -3,16 +3,28 @@ require 'json'
 require 'yaml'
 require 'time'
 require 'faraday'
+require 'indico'
 
 require_relative 'route.rb'
 
 
 def routin text, char=""
-  return if text.empty?
-  return if text.length>50
-
   t = Time.now.to_s
   t.slice! ' +0900'
+
+  # url parser
+  text.gsub!(/(https?|ftp)(:\/\/[-_.!~*\'();a-zA-Z0-9;\/?:\@&=+\$,%#]+)/, '(url)')
+  # 改行その他変換
+  text.gsub!(/　|\ |\n/, '、')
+  # エスケープ
+  text.delete!(",\\.\"\'|\<\>\\;:/*`()#}{@$-%!\=\+\[\]")
+  
+  text = kidding text
+
+  return if text.empty? || text.length>140
+
+  asj = analyze text # return {a: ,s: ,j: }
+
   File.open('log','a') do |f|
     f.puts "[#{t}]: #{text}\n"
   end
@@ -20,35 +32,47 @@ def routin text, char=""
     f.puts "[#{t}]: #{text}\n"
   end
 
-  text.gsub!(/(https?|ftp)(:\/\/[-_.!~*\'()a-zA-Z0-9;\/?:\@&=+\$,%#]+)/)
-  text.gsub!(/　|\ |\n/, '、')
-  text.delete!(",\\.\"\'|<>;:/*`()#}{@$-%!\=\+\[\]")
-  
-  text = kidding text
-
   vol = '2.0'
-  unless char.empty?
-    if char == 'ai'
-      vol = '1.0'
-    end
-    char = "-c #{char}"
+  if char == 'ai'
+    `yukarin -s 1.0 -c ai -q #{text}`
+  else 
+    char = "-c #{char}" unless char.empty?
+    p char
+    p `yukarin2 -v #{vol} #{char} -q -a #{asj[:a]} -s #{asj[:s]} -j #{asj[:j]} #{text}`
   end
-
-  `yukarin -s #{vol} #{char} -q #{text}`
-
 end
 
 def kidding text
   # result = docomo text
   result = text
 
-  if text.match(/八雲|やくも|yakumo|ヤクモ|ﾔｸﾓ|淫夢|野獣/)
+  if text.match(/八雲|やくも|yakumo|ヤクモ|ﾔｸﾓ|淫夢|野獣|ゾ〜|クルルァ/)
     result = "汚いこと言わせようとしないでください"
-  elsif text == "世の中には"
-    result = "世の中には魔女や魔法少女という存在がいる。魔女とは絶望や呪いから生まれた存在であり、人々に災厄をもたらす異形のモノ。その魔女を倒す者達が魔法少女である。本日この見滝原でも4人の魔法少女が魔女と戦っていた。"
+  elsif text.match (/^世の中には/)
+    result = "世の中には魔女や魔法少女という存在がいる。"
   end
 
   return result
+end
+
+
+def analyze text
+  url = "https://translate.google.com"
+  conn = Faraday.new url do |faraday|
+    faraday.request :url_encoded
+    faraday.adapter :net_http
+  end
+  res = conn.get do |req|
+    req.params[:h1] = "ja"
+    req.params[:langpair] = "ja%7Cen"
+    req.params[:text] = text
+  end
+  res = res.body.match(/TRANSLATED_TEXT='(.*)';var ctr,/)[1]
+
+  res = Indico.emotion res
+  p res
+
+  return {a: format('%.2f',res['anger']), s: format('%.2f',res['sadness']), j: format('%.2f',res['joy'])}
 end
 
 def docomo(text) 
@@ -67,7 +91,6 @@ def docomo(text)
   JSON.parse(res.body)['utt']
 
 end
-
 
 Thread.abort_on_exception = true
 tw = Thread.new do 
@@ -89,6 +112,8 @@ tw = Thread.new do
   end
   print "something happen"
 end
+
+Indico.api_key = YAML.load_file('auth.yml')["indico"]
 
 File.open 'pid', 'w' do |f|
   f.write Process.pid
