@@ -2,105 +2,92 @@ require 'sinatra/base'
 require 'sinatra/reloader'
 require 'sqlite3'
 require 'active_record'
-require 'securerandom'
 
 ActiveRecord::Base.establish_connection(
   adapter: 'sqlite3',
   database: 'hoge.db'
 )
 
-class Slug < ActiveRecord::Base
-  self.primary_key  = :slug_id
+# all log
+# ip, text, times
+class Log < ActiveRecord::Base
+end
+
+# banned ips table
+# ip, times
+class BannedIp < ActiveRecord::Base
 end
 
 
 class Route < Sinatra::Base
   set :bind, '0.0.0.0'
-  set :port, 37564
-  enable :sessions
-
-  @@ip = '127.0.0.1'
-  @@time = Time.now
-
-  post "/" do
-    text = JSON.parse(request.body.read)['mes']
-
-    routin text if filter request, session
+  if ENV = "dev"
+    set :port, 3000
+    register Sinatra::Reloader
+  else
+    set :port, 37564 
   end
   
+  # top page
   get "/" do
-    @logs = []
-    session[:slug_id] = publish_slug
-
-    File.open('log', 'r') do |f|
-      f.each_line do |l|
-        @logs.unshift l
-      end
-      # not mutex!!!!
-      switchLog if f.lineno>100
+    @logs = Log.last(50).map do |node| 
+      "[#{node.created_at.localtime.to_s[0..-7]}]: #{node.text}"
     end
   
     erb :index
   end
   
+  # receive posted text 
   post "/form" do
     text = params[:text]
 
-    if filter request, session
+    if filter request
       if params[:loli]=="loli"
-        routin text, "ai"
+        routin text, request.ip, "ai"
       elsif params[:kansai]=="kansai"
-        routin text, "akn"
+        routin text, request.ip, "akn"
       else
-        routin text
+        routin text, request.ip
       end
+
     end
     
     redirect to('/')
   end
 
+  # quiet
   get "/silent" do
     `ps aux | grep mpg | grep -v grep | awk '{ print "kill -9", $2 }' | sh`
     redirect to('/')
   end
 
-  def publish_slug
-    slug_id = SecureRandom.hex(32)
-    Slug.create({"slug_id": slug_id}).slug_id 
+  get '/banned' do
+    @list = BannedIp.all.map
 
-    return slug_id
+    erb :banned
   end
 
-  def destroy_slug slug_id
-    slug = Slug.find_by(slug_id: slug_id)
-
-    return false unless slug
-
-    slug.destroy()
-
-    return slug.slug_id
-  end
-
-  def filter request, session
-    # DOS対策後で書く
-    if request.ip == "192.168.2.18"
-      puts 'bunned ip: '+"192.168,2,18"
-      #return false
-    end
-
-    # sessionベースのフィルタリング
-    unless destroy_slug(session[:slug_id])
-      return false
-    end
+  # return false if data invalid
+  def filter request
+    # Thread切りたいけどトランザクション怪しいなあ・・・
+    update_banned_table(request)
+    return false if BannedIp.all.map{|node| node.ip}.include? request.ip
 
     return true
   end
 
-
-  def switchLog
-    buf = File.read('log').split("\n").drop(50)
-  
-    File.write('log', buf.join("\n")+"\n")
+  # expire = 3600s
+  # ban : 5req / 10s
+  def update_banned_table request
+    # reflesh
+    unless (l=BannedIp.where("created_at < ?", Time.now-3600)).empty?
+      BannedIp.destroy l.map{|node| node.id}
+    end
+    # ban
+    if Log.where("created_at > ?", Time.now-10).length >= 5
+      BannedIp.create(ip: request.ip) unless BannedIp.find_by(ip: request.ip)
+      puts "ban: #{request.ip}"
+    end
   end
 
   def self.start

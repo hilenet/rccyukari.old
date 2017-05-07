@@ -1,0 +1,5 @@
+<% @list.each do |node| %>
+  <%= "#{node.ip}: ~#{(node.created_at.localtime+3600).to_s[0..-7]}" %>
+  <br>
+<% end %>
+

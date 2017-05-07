@@ -4,3 +4,4 @@ pid
 log
 deep_log
 *.db
+/vendor/

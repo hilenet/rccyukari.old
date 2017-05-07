@@ -1,45 +1,39 @@
-require 'twitter'
-require 'json'
 require 'yaml'
 require 'time'
-require 'faraday'
-require 'indico'
+require 'bundler'
+Bundler.require
 
 require_relative 'route.rb'
 
+ENV = "production" # /dev
 
-def routin text, char=""
-  t = Time.now.to_s
-  t.slice! ' +0900'
-
+def routin text, ip, char=""
   # url parser
   text.gsub!(/(https?|ftp)(:\/\/[-_.!~*\'();a-zA-Z0-9;\/?:\@&=+\$,%#]+)/, '(url)')
   # 改行その他変換
   text.gsub!(/　|\ |\n/, '、')
   # エスケープ
   text.delete!(",\\.\"\'|\<\>\\;:/*`()#}{@$-%!\=\+\[\]")
-  
+  # ネタ  
   text = kidding text
 
-  return if text.empty? || text.length>140
+  return false if text.empty? || text.length>140
 
-  asj = analyze text # return {a: ,s: ,j: }
+  asj = analyze text unless ENV=="dev" # return {a: ,s: ,j: }
 
-  File.open('log','a') do |f|
-    f.puts "[#{t}]: #{text}\n"
-  end
-  File.open('deep_log','a') do |f|
-    f.puts "[#{t}]: #{text}\n"
+  unless ENV=="dev"
+    vol = '2.0'
+    if char == 'ai'
+      `yukarin -s 1.0 -c ai -q #{text}`
+    else 
+      char = "-c #{char}" unless char.empty?
+      p `yukarin2 -v #{vol} #{char} -q -a #{asj[:a]} -s #{asj[:s]} -j #{asj[:j]} #{text}`
+    end
+  else
+    puts "speak #{text}"
   end
 
-  vol = '2.0'
-  if char == 'ai'
-    `yukarin -s 1.0 -c ai -q #{text}`
-  else 
-    char = "-c #{char}" unless char.empty?
-    p char
-    p `yukarin2 -v #{vol} #{char} -q -a #{asj[:a]} -s #{asj[:s]} -j #{asj[:j]} #{text}`
-  end
+  Log.create(ip: ip, text: text) if text
 end
 
 def kidding text
@@ -70,7 +64,6 @@ def analyze text
   res = res.body.match(/TRANSLATED_TEXT='(.*)';var ctr,/)[1]
 
   res = Indico.emotion res
-  p res
 
   return {a: format('%.2f',res['anger']), s: format('%.2f',res['sadness']), j: format('%.2f',res['joy'])}
 end
@@ -92,25 +85,27 @@ def docomo(text)
 
 end
 
-Thread.abort_on_exception = true
-tw = Thread.new do 
-  auth = YAML.load_file 'auth.yml'  
-  cl = Twitter::Streaming::Client.new do |config|
-    config.consumer_key = auth["ck"]
-    config.consumer_secret = auth["cs"]
-    config.access_token = auth["at"]
-    config.access_token_secret = auth["as"]
+unless ENV=="dev"
+  Thread.abort_on_exception = true
+  tw = Thread.new do 
+    auth = YAML.load_file 'auth.yml'  
+    cl = Twitter::Streaming::Client.new do |config|
+      config.consumer_key = auth["ck"]
+      config.consumer_secret = auth["cs"]
+      config.access_token = auth["at"]
+      config.access_token_secret = auth["as"]
+    end
+    print "thread established"
+    cl.filter(track: "#rccyukari") do |status|
+      next unless status.is_a? Twitter::Tweet
+      text = status.text.dup
+      next if text.start_with? "RT"
+      text.gsub!("#rccyukari", "")
+      puts "tw: #{text}"
+      routin text, 'twitter'
+    end
+    print "something happen"
   end
-  print "thread established"
-  cl.filter(track: "#rccyukari") do |status|
-    next unless status.is_a? Twitter::Tweet
-    text = status.text.dup
-    next if text.start_with? "RT"
-    text.gsub!("#rccyukari", "")
-    puts "tw: #{text}"
-    routin text
-  end
-  print "something happen"
 end
 
 Indico.api_key = YAML.load_file('auth.yml')["indico"]
