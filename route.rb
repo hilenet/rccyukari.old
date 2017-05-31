@@ -21,12 +21,8 @@ end
 
 class Route < Sinatra::Base
   set :bind, '0.0.0.0'
-  if ENV = "dev"
-    set :port, 3000
-    register Sinatra::Reloader
-  else
-    set :port, 37564 
-  end
+  set :port, 37564 
+  set :environment, 'production'
   
   # top page
   get "/" do
@@ -77,14 +73,14 @@ class Route < Sinatra::Base
   end
 
   # expire = 3600s
-  # ban : 5req / 10s
+  # ban : 10req / 10s
   def update_banned_table request
     # reflesh
     unless (l=BannedIp.where("created_at < ?", Time.now-3600)).empty?
       BannedIp.destroy l.map{|node| node.id}
     end
     # ban
-    if Log.where("created_at > ?", Time.now-10).length >= 5
+    if Log.where("created_at > ?", Time.now-10).length >= 10
       BannedIp.create(ip: request.ip) unless BannedIp.find_by(ip: request.ip)
       puts "ban: #{request.ip}"
     end

@@ -5,3 +5,5 @@ log
 deep_log
 *.db
 /vendor/
+bundle/*
+adapt_log.rb
