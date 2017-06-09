@@ -23,10 +23,10 @@ def routin text, ip, char=""
 
   vol = '2.0'
   if char == 'ai'
-    `yukarin -s 1.0 -c ai -q #{text}`
+    p `yukarin -v 1.0 -c ai -q #{text}`
   else 
     char = "-c #{char}" unless char.empty?
-    p `yukarin2 -v #{vol} #{char} -q -a #{asj[:a]} -s #{asj[:s]} -j #{asj[:j]} #{text}`
+    `yukarin2 -v #{vol} #{char} -q -a #{asj[:a]} -s #{asj[:s]} -j #{asj[:j]} #{text}`
   end
 
   Log.create(ip: ip, text: text) if text
@@ -78,8 +78,8 @@ def docomo(text)
     }.to_json
   end
   JSON.parse(res.body)['utt']
-
 end
+
 Thread.abort_on_exception = true
 tw = Thread.new do 
   auth = YAML.load_file 'auth.yml'  
