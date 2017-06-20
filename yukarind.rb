@@ -80,6 +80,7 @@ def docomo(text)
   JSON.parse(res.body)['utt']
 end
 
+=begin
 Thread.abort_on_exception = true
 tw = Thread.new do 
   auth = YAML.load_file 'auth.yml'  
@@ -105,7 +106,7 @@ tw = Thread.new do
   end
   print "something happen"
 end
-
+=end
 Indico.api_key = YAML.load_file('auth.yml')["indico"]
 
 File.open 'pid', 'w' do |f|

@@ -51,9 +51,21 @@ class Route < Sinatra::Base
     redirect to('/')
   end
 
+  post "/yo" do 
+    url = params[:url]
+    redirect to '/' if url.include? ";"
+    redirect to '/' unless url.include? "http"
+
+    `youtube-dl '#{url}' -o - | mplayer - -novideo --volume=30 --softvol`
+
+    redirect to('/')
+  end
+
   # quiet
   get "/silent" do
     `ps aux | grep mpg | grep -v grep | awk '{ print "kill -9", $2 }' | sh`
+    `ps aux | grep youtube-dl | grep -v grep | awk '{ print "kill -9", $2 }' | sh`
+    `ps aux | grep mplayer | grep -v grep | awk '{ print "kill -9", $2 }' | sh`
     redirect to('/')
   end
 
